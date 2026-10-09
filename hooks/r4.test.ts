@@ -21,6 +21,7 @@ const folder = () => {
 const world = (on: On, files: Record<string, string>) => {
   const enc = new TextEncoder()
   const fresh = Date.now()
+  const bytesRead: Record<string, number> = {}
   on('env.get', () => ({ value: '/Users/me' }) as never)
   on('session.cwd', () => ({ value: DIR }))
   on('session.root', () => ({ value: DIR }))
@@ -37,8 +38,10 @@ const world = (on: On, files: Record<string, string>) => {
   on('process.run', ($, e) => {
     const [, , , , from1 = '1', path = '', length = '0'] = e.argv
     const bytes = enc.encode(files[path] ?? '').slice(Number(from1) - 1, Number(from1) - 1 + Math.min(Number(length), 4 * 1024 * 1024))
+    bytesRead[path] = (bytesRead[path] ?? 0) + bytes.length
     return { value: { exitCode: 0, stdout: new TextDecoder().decode(bytes), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } } as never
   })
+  return { bytesRead }
 }
 
 describe('R3-1 desktop SVG stays under its limit', () => {
@@ -189,6 +192,21 @@ describe('R1-9 residual: switching TANDEM.md mid-poll', () => {
     await pending
     expect(await ui.find({ type: 'Text', text: /TANDEM — Bee/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /ZA1/ })).toBeUndefined()
+    await ui.unmount()
+  })
+})
+
+describe('P3: a log from another folder is judged by its first 64 KB', () => {
+  test('a 5 MB foreign log costs at most 64 KB and is never read again', async ($, on) => {
+    const t = Date.now()
+    const log = `${folder()}/rollout-foreign.jsonl`
+    const text = line({ timestamp: iso(t), type: 'session_meta', payload: { id: 'f', timestamp: iso(t), cwd: '/Users/me/elsewhere' } }) + ev(t, { type: 'token_count', pad: 'z'.repeat(5_000_000) })
+    const w = world(on, { [`${DIR}/TANDEM.md`]: TANDEM, [log]: text })
+    await $.command.run({ command: 'tandem', args: '' } as never)
+    const ui = await $.ui.mount({ plugin: 'tandem-split', surface: 'terminal', component: 'Pane', requestId: 'tandem', props: PANE })
+    await ui.press({ key: 'refresh' })
+    await ui.press({ key: 'refresh' })
+    expect(w.bytesRead[log] ?? 0).toBeLessThanOrEqual(64 * 1024)
     await ui.unmount()
   })
 })

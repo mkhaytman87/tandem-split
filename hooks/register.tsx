@@ -330,6 +330,19 @@ async function pollCodex($: EngineInterface, dir: string, gen: number): Promise<
         continue
       }
     }
+    if (cached === undefined) {
+      // A log new to us: decide from its first 64 KB (the session's folder is its first line) before
+      // reading any more of it.
+      const head = await readBytes($, f, 0, 64 * 1024).catch(() => '')
+      const meta = parseRollout(head.slice(0, head.lastIndexOf('\n') + 1))
+      const ours = await isOurs($, meta, dir)
+      if (gen !== targetGen) return
+      if (ours === false) {
+        foreign.add(f)
+        continue
+      }
+      if (ours === undefined) continue // no session line yet: look again next poll
+    }
     const next = await readRollout($, f, entry.size, cached).catch(() => undefined)
     if (next === undefined || gen !== targetGen) continue
     next.mtimeMs = entry.mtimeMs

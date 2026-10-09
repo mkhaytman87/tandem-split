@@ -11,7 +11,7 @@ Two panes:
 - **Tandem** (`/tandem`): Claude's lane and Codex's lane side by side, each listing the parts it leads and seconds;
   the tandem's six steps (Decompose → Assign → Confirm → Hand off → Work → Re-assign); and a wire between the lanes.
   - The Claude lane follows the main Claude loop's response as it streams: thinking, text, and the tool being called.
-    Subagents and headless `claude -p` runs it started show as running or finished (not their output).
+    Subagents and headless `claude -p` runs it starts show while they run (not their output).
   - The Codex lane follows Codex sessions working in the tandem's folder (see [What it reads](#what-it-reads)): the
     part and role each was handed, each message as it finishes, the command or file it is on, and when it ends.
   - The wire animates what it observes: a packet slides Claude → Codex when a Codex session picks up a part, and
@@ -45,9 +45,9 @@ Answer `y` to add the marketplace, then choose a scope. To run it from a clone i
 
 | Command | What it does |
 |---|---|
-| `/tandem` | Opens the Tandem pane on the project's `TANDEM.md` (the pane also opens by itself when the session starts in a folder that has one, or when one is written) |
+| `/tandem` | Opens the Tandem pane on the `TANDEM.md` already loaded, else the project's, else the last one you opened (the pane also opens by itself when the session starts in a folder that has one, or when one is written) |
 | `/tandem <path or folder>` | Opens it on another `TANDEM.md` (`~/` paths work) |
-| `/tandem <a job, in words>` | Opens the pane and sends Claude a prompt asking it to run the codex-claude-tandem skill on that job |
+| `/tandem <a job, in words>` | Opens the pane and sends Claude a prompt asking it to run the codex-claude-tandem skill on that job. It takes more than one word: a single word is read as a path |
 | `/tandem arcade` | Opens Tandem Arcade |
 | **Refresh** | Re-reads the current `TANDEM.md` and Codex logs now |
 
@@ -77,10 +77,13 @@ None.
 ```
 
 - Every `## …Parts…` table counts, in document order; a part listed again later takes its new row and starts over.
-- Status comes from `###` headings that name a part: `LEAD:` → handed off; "delivered"/"result"/"report" →
-  delivered; "review" → in review; "accepted"/"done"/"complete" → accepted ("not accepted yet" does not count); a
-  heading naming no part changes nothing, except "Final acceptance" or "all parts", which accepts every part so far.
-- "AGREE" anywhere marks the split confirmed; "CONTEST" marks it contested.
+- Status comes from `###` headings that name a part: `LEAD:` → handed off (only for a part still assigned);
+  "delivered"/"result"/"report" → delivered; "review" → in review; "blocked"/"stalled" → blocked;
+  "accepted"/"done"/"complete" → accepted ("not accepted yet" does not count, and acceptance wins over `LEAD:` in the
+  same heading). A heading naming no part changes nothing, except "Final acceptance" or "all parts", which accepts
+  every part listed so far.
+- "AGREE" anywhere marks the split confirmed; "CONTEST" marks it contested. The skill's own hand-off template
+  ("reply AGREE or CONTEST", "AGREE/CONTEST") counts as neither.
 
 ## What it reads
 
@@ -90,9 +93,9 @@ The mod makes no network calls of its own. It reads, on your machine:
   and re-read when it changes; while none is found it looks again every five seconds. The last one you opened is
   remembered in Claude Code's plugin store so a bare `/tandem` in another folder can reopen it.
 - **Codex session logs**, `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`: today's and yesterday's folders every
-  second, the week before every tenth second, plus any log it already follows. It reads a new log's start to learn
-  its working folder, and follows only sessions whose folder is the tandem's folder, inside it, or a git repository
-  root above it; others are skipped from then on. Followed logs are read in order, in chunks, as they grow. From
+  second, today's and the six days before every tenth second, plus any log it already follows. For a log it has not
+  seen, it reads the first 64 KB to learn the session's working folder, and follows only sessions whose folder is
+  the tandem's folder, inside it, or a git repository root above it; others are not read again. Followed logs are read in order, in chunks, as they grow. From
   them it shows the hand-off message's part and role, Codex's messages, the commands it runs and the files it
   writes (names only), and completion. A log already quiet for ten minutes when the session starts is skipped until
   it changes. The pane keeps the last ten sessions.
@@ -121,10 +124,11 @@ claude plugin test .
 `tsconfig.json` extends `.claude-plugin/types/tsconfig.json`, which Claude Code generates (with the API declarations)
 the first time it loads the folder, e.g. with `claude --plugin-dir .`; after that, `tsc -p .` type-checks.
 
-The 53 tests cover the `TANDEM.md` parser, the Codex log parser (including chunked reads of a multi-megabyte log and
-lines longer than a read), the animation frames, both panes on the terminal and desktop surfaces, and a regression
-for every finding of two Codex review rounds. That loop is how this was built: Codex audited, Claude landed the
-fixes, and a fresh Codex session re-audited.
+The 54 tests cover the `TANDEM.md` parser, the Codex log parser (including chunked reads of a multi-megabyte log and
+lines longer than a read), the animation frames, both panes on the terminal and desktop surfaces, and regressions for
+the findings of two Codex review rounds that can be tested in isolation (a few timing and discovery fixes are
+checked by reading only). That loop is how this was built: Codex audited, Claude landed the fixes, and a fresh Codex
+session re-audited.
 
 ## Caveats
 
