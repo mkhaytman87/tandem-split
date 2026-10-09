@@ -1,0 +1,6 @@
+{
+  "name": "tandem-split",
+  "description": "tandem-split: a live Codex + Claude Code tandem view for Claude Code",
+  "owner": { "name": "Mike Khaytman", "url": "https://github.com/mkhaytman87" },
+  "plugins": [{ "name": "tandem-split", "source": "./" }]
+}

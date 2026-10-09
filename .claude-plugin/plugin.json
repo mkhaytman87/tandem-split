@@ -1,0 +1,11 @@
+{
+  "name": "tandem-split",
+  "version": "0.4.0",
+  "description": "Live Codex + Claude Code tandem view for the codex-claude-tandem skill: lanes, workflow, animated hand-offs, and a pixel-art Tandem Arcade",
+  "author": { "name": "Mike Khaytman", "url": "https://github.com/mkhaytman87" },
+  "homepage": "https://github.com/mkhaytman87/tandem-split",
+  "repository": "https://github.com/mkhaytman87/tandem-split",
+  "license": "MIT",
+  "keywords": ["codex", "tandem", "multi-agent", "pane", "pixel-art"],
+  "types": "./types/index.d.ts"
+}
